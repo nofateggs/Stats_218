@@ -1,0 +1,224 @@
+---
+title: "HW4"
+author: "Zihan Lin"
+date: "2024-11-07"
+output: pdf_document
+---
+
+```{r warning=FALSE, message=FALSE}
+library(networkdata)
+library(network)
+library(ergm)
+library(sna)
+data(ffef)
+data(hansell)
+```
+
+
+
+## Question 1
+Modeling the French Financial Elite: Here we consider a network collected by Charles Kadushin and described in the Kadushin (1990).
+
+He collected data from 127 members of the French financial elite. He used various criteria to determine the top 28 and recorded their who-to-whom responses to questions about who was influential, who were members of the elite and who were friends. He also recorded a large amount of information on their individual backgrounds and characteristics.
+
+We will focus on the (undirected) friendship network. 
+
+There are many vertex covariates, including:
+
+- prestige: (coded as 0 if respondent has neither a particule nor a social register listing; 1 if a respondent has either a particule or a social register listing; and 2 if respondent has both a particule and social register listing)
+
+- party: An indicator of the party membership. There are 11 parties.
+
+- masons: A member of the masons? 1=no; 2=yes.
+
+- ena: Graduated from ENA? 1=no; 2=yes.
+
+- boards: Number of top boards they are a member of.
+
+\newpage
+
+### a)
+Plot the network with the vertex color being the ENA attendance. What do you see?
+```{r}
+plot(ffef, 
+     vertex.col = ifelse(network::get.vertex.attribute(ffef, "ena") == 2, "red", "blue"))
+legend("topright", pch = 16, cex = 0.8,
+       legend = c("Graduated from ENA", "Not Graduated from ENA"),
+       col = c("red", "blue"))
+```
+
+\newpage
+
+### b)
+Fit a model to the network that includes terms for the homophily on ENA attendance, prestige and party affiliation. Include terms for geometrically weighted edgewise shared partners with the scale parameter fixed at 0.5 (i.e., gwesp(0.5,fixed=T)). Include a similar term for geometrically weighted dyadwise shared partners with the scale parameter fixed at 0.5 (i.e., gwdsp(0.5,fixed=T)).
+Hint: Use ergm.tapered() as it better deals with strong dependence between terms.
+```{r warning=FALSE, message=FALSE, catch = TRUE}
+ffef_fit <- ergm(ffef ~ edges + 
+                        nodematch("ena") + 
+                        nodematch("prestige") + 
+                        nodematch("party") +
+                        gwesp(0.5, fixed = TRUE) + 
+                        gwdsp(0.5, fixed = TRUE))
+
+summary(ffef_fit)
+```
+
+
+\newpage
+
+### c)
+Give an interpretation for each of the coefficients in the model in terms of what it means and also what its magnitude indicates about the nature of social relations in the network.
+
+- Edges (`r ffef_fit$coef[1]`): This value shows the basic likelihood of two people in the network being friends. Since it’s a large negative number, it suggests that friendships are generally uncommon unless there are specific reasons to form connections.
+
+- ENA (`r ffef_fit$coef[2]`): This positive value means that people who both attended ENA, a prestigious school, are much more likely to be friends. ENA attendance is a strong factor in forming friendships, meaning people are drawn to others with the same educational background.
+
+- Prestige (`r ffef_fit$coef[3]`): This positive value shows that people with similar social prestige (or status) are more likely to be friends. However, the effect is smaller than that for ENA attendance, so while status matters, it’s not as important as educational background.
+
+- Party (`r ffef_fit$coef[4]`): This positive value indicates that people in the same political party tend to form friendships. It’s a fairly strong factor in forming connections, showing that political alignment also influences friendships, though it’s less powerful than shared education.
+
+- GWESP (`r ffef_fit$coef[5]`): This value shows a tendency for “friend-of-a-friend” connections, meaning if two people have a mutual friend, they’re more likely to become friends themselves. This tendency to form “triangles” or small, connected groups adds some structure to the network.
+
+- GWDSP (`r ffef_fit$coef[6]`): This value represents connections where two people have mutual friends but don’t necessarily become friends themselves. It shows that people tend to have indirect social connections, even if they’re not all part of tightly connected groups.
+
+
+
+\newpage
+
+### d) 
+Look at the MCMC diagnostics for the model (via, e.g., mcmc.diagnostics(fit)). What does it say about the convergence of your model?
+```{r}
+mcmc.diagnostics(ffef_fit)
+```
+
+The MCMC diagnostics show that the model has mostly converged well. The trace plots are stable, meaning the model’s estimates are not wandering and are centered around a consistent average. The low time-series standard errors mean the estimates are reliable. Most of the p-values are above 0.05, showing that the model fits the observed data well, although the gwesp term has a slightly low p-value (0.033), suggesting the model may not fully capture clustering effects. The decreasing autocorrelations show that the samples are mixing well, and the Geweke test’s high p-value (0.885) confirms the model is stable over time. Overall, the model is a good fit for the data, with only a small improvement needed for clustering.
+
+\newpage
+
+### e) 
+Extend the model to include other covariates in the network and other terms that you think are interesting in explaining the social structure. Feel free to consult the reference paper for ideas. Overall, what are the important features of the social structure of this network?
+
+```{r catch = TRUE, message=FALSE, warning=FALSE}
+fit_extended <- ergm(ffef ~ edges + 
+                            nodematch("ena") + 
+                            nodematch("prestige") + 
+                            nodematch("party") +
+                            nodematch("masons") + 
+                            gwesp(0.5, fixed = TRUE) + 
+                            gwdsp(0.5, fixed = TRUE))
+summary(fit_extended)
+```
+
+
+The social structure of the French financial elite network shows that friendships are selective and built around common backgrounds and affiliations. Having attended ENA, a prestigious school, is the biggest factor in forming friendships, followed by being in the same political party and having similar social status. There is a strong tendency for friends of friends to also become friends, which creates tightly connected social circles. Indirect connections through shared friends are also common, even if they don’t form fully connected groups. Membership in the Masons does not seem to have much impact on friendships, showing that not all shared memberships matter in this network. Overall, this model reveals a network where friendships are shaped by shared education, social status, political ties, and clustering, with social and political boundaries influencing who becomes friends.
+
+
+```{r echo = FALSE}
+#- Edges (-4.79745): This value shows the basic likelihood of two people in the network being friends. Since it’s a large negative number, it suggests that friendships are generally uncommon unless there are specific reasons to form connections.
+
+#- ENA (1.58879): This positive value means that people who both attended ENA, a prestigious school, are much more likely to be friends. ENA attendance is a strong factor in forming friendships, meaning people are drawn to others with the same educational background.
+
+#- Prestige (0.70886): This positive value shows that people with similar social prestige (or status) are more likely to be friends. However, the effect is smaller than that for ENA attendance, so while status matters, it’s not as important as educational background.
+
+#- Party (1.26006): This positive value indicates that people in the same political party tend to form friendships. It’s a fairly strong factor in forming connections, showing that political alignment also influences friendships, though it’s less powerful than shared education.
+
+#- Masons (0.22397): This positive value shows a weak tendency for people who are members of the Masons to form friendships. However, it’s not statistically significant, suggesting that shared Masons membership doesn’t strongly influence friendships in this network.
+
+#- GWESP (0.44341): This value shows a tendency for “friend-of-a-friend” connections, meaning if two people have a mutual friend, they’re more likely to become friends themselves. This tendency to form “triangles” or small, connected groups adds some structure to the network.
+
+#- GWDSP (0.18316): This value represents connections where two people have mutual friends but don’t necessarily become friends themselves. It shows that people tend to have indirect social connections, even if they’re not all part of tightly connected groups.
+```
+
+\newpage
+
+## Question 2
+Modeling Balance in Friendship Relations: Here we consider again the network introduced in Homework 3 of strong friendship ties among 13 boys and 14 girls in a sixth-grade classroom, as collected by Hansell (1984). Each student was asked if they liked each other student “a lot”, “some”, or “not much”. Here we consider a strong friendship tie to exist if a student likes another student “a lot.” Also recorded is the sex of each student.
+
+The statistics ttriad and ctriad count the number of transitive triads and the number of cyclic triads, respectively.
+
+```{r}
+network::get.vertex.attribute(hansell, "sex")
+```
+
+### a) 
+Is the friendship network balanced in Heider’s definition of balance? Give a reason why or why not.
+
+```{r}
+summary(hansell ~ ttriad)
+summary(hansell ~ ctriad)
+```
+
+Since the number of transitive triads is `r summary(hansell ~ ttriad)` and the number of cyclic triads is `r summary(hansell ~ ctriad)`, `r summary(hansell ~ ttriad)` > `r summary(hansell ~ ctriad)`, the network is more likely to be balanced according the Heider;s definition, as transitive triads are more common than cyclic triads. 
+
+\newpage
+
+### b) 
+We can measure the statistical degree of balance in a network by including the ttriad and ctriad statistics in the model, as these count of the number of transitive triads and the count of the number of cyclic triads, respectively. If the coefficient of the transitive triad statistic is positive, then the model places higher probability on networks with transitive triads - that is, on balanced networks. We may also see the same or less cyclic triads compared to a neutral random network.
+
+Fit the model with transitive and cyclic triads as well as foundational statistics for the overall density, the mutuality of ties and the homophily on sex using the ergm.tapered command:
+
+```{r cache = TRUE, warning=FALSE, message=FALSE}
+fit <- ergm(hansell ~ edges + mutual + nodematch("sex", diff = TRUE) +
+                    ttriad + ctriad, estimate = "MPLE")
+summary(fit)
+```
+
+**Give a brief interpretation of the coefficients of the first three terms.**
+
+**Does there appear to be a general preference for mutual friendship ties? Does there appear to be a general preference for same-sex friendship ties?**
+
+- Edges (`r fit$coef[1]`): This value shows the basic likelihood of two students in the network being friends. Since it’s a large negative number, it suggests that friendships are generally uncommon unless there are specific reasons for students to connect.
+
+- Mutual (`r fit$coef[2]`): This positive value indicates a tendency for friendships to be mutual, meaning if one student considers another a friend, the feeling is likely to be returned. However, the effect is not statistically significant, suggesting that there isn’t a strong or consistent preference for friendships to be mutual in this network.
+
+- Same-Sex Friendship (Female: `r fit$coef[3]`, Male: `r fit$coef[4]`): These positive values show that students are much more likely to form friendships with others of the same sex. Both coefficients are statistically significant, indicating a strong preference for same-sex friendships. Boys are slightly more likely to prefer same-sex friendships than girls in this classroom network.
+
+\newpage
+
+### c) 
+**Give a brief interpretation of the coefficients of the ttriad and ctriad terms.**
+
+- Transitive Triads (ttriad: `r fit$coef[5]`): This positive value shows that students in the network tend to form “friend-of-a-friend” relationships. If student A is friends with student B, and student B is friends with student C, student A is also likely to be friends with student C. This preference for forming closed triangles means that the network has a strong tendency toward clustering, where groups of friends are closely connected.
+
+- Cyclic Triads (ctriad: `r fit$coef[6]`): This negative value shows that students in the network tend to avoid forming cyclic relationships. A cyclic triad is when student A is friends with student B, student B is friends with student C, and student C is friends with student A, but without the triangle closing in a transitive way. The negative coefficient suggests that these kinds of unbalanced, looping relationships are rare in the network.
+
+**Describe the pattern of transitive and cyclic ties.**
+
+- The positive value for transitive triads and negative value for cyclic triads indicate that students prefer balanced, tightly connected friendships. Friendships tend to close into triangles, creating cohesive groups rather than open loops. This pattern supports a stable social structure where students are more likely to have friends in common, fostering a harmonious network in the classroom.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

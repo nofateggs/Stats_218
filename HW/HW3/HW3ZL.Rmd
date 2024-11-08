@@ -1,0 +1,343 @@
+---
+title: "HW3"
+author: "Zihan Lin"
+date: "2024-10-24"
+output: pdf_document
+---
+
+```{r warning=FALSE, message=FALSE}
+library(sna)
+library(network)
+library(networkdata) 
+library(tidyverse)
+library(ergm)
+data(coldwar)
+data(hansell)
+```
+
+
+
+\newpage
+
+## Question 1
+
+```{r}
+coldwarcc <- coldwar$cc[,,1]
+coldwarcc[coldwarcc < 0] <- 0
+# coldwarcc[is.na(coldwarcc)] <- 0
+
+network_cw <- network(coldwarcc, directed = FALSE)
+degree_cw <- sna::centralization(dat = network_cw, FUN = sna::degree)
+degree_cw
+```
+
+since the value of degree centralization is `r degree_cw`, the null hypothesis cannot be rejected, which means it is a simple random graph model.
+
+```{r warning=FALSE}
+Cd = function(Y) {
+  n = nrow(Y)
+  d = apply(Y,1,sum,na.rm=TRUE)
+  sum(max(d)-d)/( (n-1)*(n-2) )
+}
+
+cug_test <- cug.test(dat = network_cw, FUN = Cd, cmode = "edges", reps = 1000)
+plot(cug_test)
+```
+
+\newpage
+
+
+## Question 2
+### a)
+```{r}
+plot(hansell,
+     vertex.col = ifelse(get.vertex.attribute(hansell, "sex") == "male", "blue", "red"),
+     edge.col = "grey")
+```
+
+based on the plot, there is a general preference for same-sex friendship ties, it is easy to see that blue nodes are predominantly connected the other blue nodes, same for red nodes which represents girls. 
+
+\newpage
+
+### b)
+```{r}
+fit.er <- ergm(hansell ~ edges)
+summary(fit.er)
+```
+
+
+
+```{r}
+log_odds_b <- -1.24454
+cat("the log-odds of a tie between two randomly chosen students is", log_odds_b)
+```
+
+
+```{r}
+probability_b <- exp(log_odds_b) / (1 + exp(log_odds_b))
+cat("the MLE of the probability of a tie between two randomly chosen students is",
+    probability_b)
+```
+
+
+\newpage
+
+```{r}
+hansell
+vertices <- 27
+tot_edges <- 157
+density_b <- tot_edges / (vertices * (vertices - 1))
+cat("the density of the network is", density_b)
+```
+
+```{r}
+# H_0: The null hypothesis is that all networks among the students are equally likely
+# H_1: The alternative hypothesis is that the Erdos-Renyi model fits the data better
+
+Null_Deviance <- 973.2
+Residual_Deviance <- 746.2
+p_value_b <- 1 - pchisq(Null_Deviance - Residual_Deviance, df = 1)
+p_value_b
+```
+
+the MLE probability under the Erdos-Renyi model is lower than the actual observed density of ties in the network (MLE = `r probability_b`, density = `r density_b`) and the p-value is `r p_value_b`, suggesting that the Erdos-Renyi model might underestimate the number of ties in this specific network.
+
+\newpage
+
+
+### c)
+```{r}
+fit.homo <- ergm(hansell~edges + nodematch("sex"))
+summary(fit.homo)
+```
+
+since p-value for nodematch.sex is <1e-04, which is highly significant result that indicates strong evidence of homophily based on sex
+
+\newpage
+
+```{r}
+log_odds_c <- -1.9841 + 1.2954
+cat("the log-odds of a tie between two students of the same sex is", log_odds_c)
+```
+
+
+```{r}
+probability_c <- exp(log_odds_c) / (1 + exp(log_odds_c))
+cat("the MLE of the probability of a tie between two students of the same sex is",
+    probability_c)
+```
+
+```{r}
+probability_oppo <- exp(-1.9841) / (1 + exp(-1.9841))
+cat("the MLE of the probability of a tie between two students of the opposite sex is",
+    probability_oppo)
+```
+
+```{r}
+Null_Deviance <- 973.2
+Residual_Deviance <- 699.1
+p_value_c <- 1 - pchisq(Null_Deviance - Residual_Deviance, df = 1)
+p_value_c
+```
+
+The p-value is extremely small (p-value = `r p_value_c`), indicating that the model with homophily based on sex fits significantly better than the Erdos-Renyi model.
+
+
+\newpage
+
+### d)
+
+```{r}
+fit.diff.homo <- ergm(hansell~edges + nodematch("sex", diff=TRUE))
+summary(fit.diff.homo)
+```
+
+
+the significant z-tests for both coefficients, combined with the higher estimate for nodematch.sex.female, support the conclusion that homophily is indeed stronger among females than among males in this network.
+
+
+\newpage
+
+### e) 
+```{r}
+fit.mix <- ergm(hansell~edges+nodemix("sex"))
+summary(fit.mix)
+```
+
+\newpage
+
+```{r}
+log_odds_e <- -1.8374
+cat("the log-odds of a tie from a male to a female student is", log_odds_e)
+```
+
+```{r}
+probability_e <- exp(-2.1493) / (1 + exp(-2.1493))
+cat("the MLE of the probability of a tie from a female to a male student is",
+    probability_e)
+```
+
+```{r}
+sex_attr <- get.vertex.attribute(hansell, "sex")
+edge_list <- as.matrix.network.edgelist(hansell)
+
+
+female_to_male_count <- 0
+for (i in 1:nrow(edge_list)) {
+  from <- edge_list[i, 1]
+  to <- edge_list[i, 2]
+
+  if (sex_attr[from] == "female" && sex_attr[to] == "male") {
+    female_to_male_count <- female_to_male_count + 1
+  }
+}
+
+female_to_male_count / (13 * 14)
+```
+
+they are almost the same, the difference between them is `r (female_to_male_count / (13 * 14)) - probability_e` (empirical frequency - MLE of the probability of a tie from a female to a male student)
+
+```{r}
+Residual_Deviance_bernoilli <- 746.2
+Residual_Deviance_mixing <- 695.5
+p_value_e <- 1 - pchisq(Residual_Deviance_bernoilli - Residual_Deviance_mixing, df = 2)
+p_value_e
+```
+
+the p-value is very small, indicating that the full mixing model fits significantly better than the Erdos-Renyi model.
+
+```{r}
+Residual_Deviance_homohily <- 699.1
+Residual_Deviance_mixing <- 695.5
+p_value_e <- 1 - pchisq(Residual_Deviance_homohily - Residual_Deviance_mixing, df = 2)
+p_value_e
+```
+
+the p-value is 0.1652989, indicating that the full mixing model does not fit better than the homophily model.
+
+```{r}
+Residual_Deviance_diff <- 696.4
+Residual_Deviance_mixing <- 695.5
+p_value_e <- 1 - pchisq(Residual_Deviance_diff - Residual_Deviance_mixing, df = 2)
+p_value_e
+```
+
+the p-value is 0.6376282, indicating that the full mixing model does not fit better than the differential homophily model.
+
+
+## Question 3
+### a)
+```{r cache=TRUE}
+fit <- ergm(hansell ~ edges + nodematch("sex") + sender + receiver + mutual, 
+            control=control.ergm(MCMLE.maxit=4))
+fit0 <- ergm(hansell ~ edges + nodematch("sex") + sender + receiver + mutual, 
+             estimate="MPLE", control=control.ergm(MCMLE.maxit=4))
+fit$mle.lik <- fit0$mple.lik
+summary_fit <- summary(fit)
+summary_fit
+```
+
+the coefficient for nodematch.sex is `r summary_fit$coefficients[2]` with a very small p-value (< 1e-04), which suggests that there is a statistically significant preference for same-sex friendships in this network.
+
+The coefficient for mutual is `r summary_fit$coefficients[55]` with a p-value of 0.07782, which is marginally significant at the 10% level, which suggests a weak, positive preference for mutual friendship ties.
+
+
+
+
+\newpage
+
+### b)
+```{r}
+centrality_scores <- coef(fit)[grep("sender", names(coef(fit)))]
+prestige_scores <- coef(fit)[grep("receiver", names(coef(fit)))]
+
+plot(centrality_scores, prestige_scores, 
+     xlab = "Centrality", ylab = "Prestige", 
+     xlim = c(-3.1, 3.5), ylim = c(-2.1, 1.7),
+     pch = 18, col = "red")
+
+text(centrality_scores, prestige_scores, 
+     labels = names(centrality_scores), pos = 3, cex = 0.88)
+
+points(x = centrality_scores[15], y = prestige_scores[15], pch = 19, col = "blue")
+points(x = centrality_scores[4], y = prestige_scores[4], pch = 19, col = "blue")
+points(x = centrality_scores[14], y = prestige_scores[14], pch = 19, col = "orange")
+points(x = centrality_scores[16], y = prestige_scores[16], pch = 19, col = "orange")
+
+legend("topright",
+       legend = c("General Points", "Centrality top", "Prestige top"),
+       col = c("red", "blue", "orange"),
+       pch = c(18, 19, 19),
+       cex = 1.2)
+```
+
+\newpage
+
+```{r}
+sort(centrality_scores, decreasing = TRUE)[1:2]
+sort(prestige_scores, decreasing = TRUE)[1:2]
+```
+
+yes, in the figure, 
+
+Sender16 and Sender5 are clearly positioned on the far right, reflecting their high centrality.
+
+Receiver15 and Receiver17 are positioned near the top, indicating their high prestige.
+
+
+
+```{r}
+in_degree <- degree(hansell, cmode = "indegree")
+out_degree <- degree(hansell, cmode = "outdegree")
+
+node_indices <- as.numeric(gsub("sender|receiver", "", names(centrality_scores)))
+
+calculate_correlation <- function(scores, matching_degree) {
+  filtered_indices <- which(is.finite(scores) & is.finite(matching_degree))
+  scores_filtered <- scores[filtered_indices]
+  matching_degree_filtered <- matching_degree[filtered_indices]
+  cor(scores_filtered, matching_degree_filtered)
+}
+
+cor_centrality <- calculate_correlation(centrality_scores, out_degree[node_indices])
+cor_prestige <- calculate_correlation(prestige_scores, in_degree[node_indices])
+
+cat("Correlation between ERGM centrality and Freeman’s out-degree centrality:", cor_centrality, "\n")
+cat("Correlation between ERGM prestige and Freeman’s in-degree centrality:", cor_prestige, "\n")
+```
+
+\newpage
+
+### c)
+```{r}
+sender_coefficients <- coef(fit)[grep("sender", names(coef(fit)))]
+receiver_coefficients <- coef(fit)[grep("receiver", names(coef(fit)))]
+
+typical_sender_magnitude <- mean(abs(sender_coefficients[is.finite(sender_coefficients)]))
+typical_receiver_magnitude <- mean(abs(receiver_coefficients[is.finite(receiver_coefficients)]))
+
+cat("Typical magnitude of sender coefficients:", typical_sender_magnitude, "\n")
+cat("Typical magnitude of receiver coefficients:", typical_receiver_magnitude, "\n")
+```
+
+```{r}
+coefficients <- c(Sender = 1.141488, Receiver = 1.038135, Homophily = 1.81462, Mutual = 0.80159)
+
+barplot(coefficients, 
+        horiz = TRUE, 
+        col = c("red", "blue", "purple", "green"), 
+        main = "Comparison of Coefficient Magnitudes",
+        xlab = "Coefficient Magnitude",
+        las = 1)
+
+text(coefficients, barplot(coefficients, horiz = TRUE, plot = FALSE), 
+     labels = round(coefficients, 3), pos = 4, cex = 0.8)
+```
+
+
+The typical magnitudes of the sender 1.141488 and receiver 1.038135 coefficients are smaller than both the same-sex preference coefficient 1.81462 and the mutual tie coefficient 0.80159, indicating that homophily has the strongest effect on network ties, followed by mutuality, with sender and receiver effects being comparatively weaker.
+
+
+
+
+

@@ -1,0 +1,464 @@
+---
+title: "Stats_218_HW2"
+author: "Zihan Lin"
+date: "2024-10-15"
+output: pdf_document
+---
+
+
+```{r warning=FALSE, message=FALSE}
+library(networkdata)
+library(sna)
+library(network)
+library(igraph)
+library(degreenet)
+library(tidyverse)
+data(florentine)
+data(butland_ppi)
+data(addhealth9)
+data(tribes)
+```
+
+\newpage
+
+## Question 1
+### a. 
+```{r}
+only_boy <- which(addhealth9$X[,"female"] == 0)
+health_ntwk <- network(addhealth9$E[addhealth9$E[,1] %in% only_boy 
+                                    & addhealth9$E[,2] %in% only_boy,], 
+                       directed = FALSE)
+largest_health <- component.dist(health_ntwk)$membership == which.max(component.dist(health_ntwk)$csize)
+larg_health_ntwk <- network(health_ntwk[largest_health, largest_health], directed = FALSE)
+
+evcent_health <- sna::evcent(larg_health_ntwk, gmode = "graph")
+barplot(evcent_health)
+summary(evcent_health)
+
+centralization(dat = larg_health_ntwk, FUN = sna::evcent, mode = "graph")
+```
+
+\newpage
+
+```{r}
+tribes_pos_ntwk <- network(tribes[,,"pos"], directed = FALSE)
+largest_tribes <- component.dist(tribes_pos_ntwk)$membership == which.max(component.dist(tribes_pos_ntwk)$csize)
+
+larg_tribes_pos_ntwk <- network(tribes_pos_ntwk[largest_tribes, largest_tribes], directed = FALSE)
+evcent_tribes_large <- sna::evcent(larg_tribes_pos_ntwk, gmode = "graph")
+barplot(evcent_tribes_large)
+summary(evcent_tribes_large)
+
+centralization(dat = larg_tribes_pos_ntwk, FUN = sna::evcent, mode = "graph")
+```
+
+\newpage
+
+```{r}
+but_ntwk <- network(butland_ppi, directed = FALSE)
+larg_but <- component.dist(but_ntwk)$membership == which.max(component.dist(but_ntwk)$csize)
+
+larg_but_ntwk <- network(but_ntwk[larg_but, larg_but], directed = FALSE)
+evcent_but_larg <- sna::evcent(larg_but_ntwk, gmode = "graph")
+barplot(evcent_but_larg)
+summary(evcent_but_larg)
+
+centralization(dat = larg_but_ntwk, FUN = sna::evcent, mode = "graph")
+```
+
+
+\newpage
+
+### b. 
+```{r}
+close_health <- sna::closeness(larg_health_ntwk, gmode = "graph")
+close_tribes <- sna::closeness(larg_tribes_pos_ntwk, gmode = "graph")
+close_but <- sna::closeness(larg_but_ntwk, gmode = "graph")
+
+barplot(close_health)
+barplot(close_tribes)
+barplot(close_but)
+
+summary(close_health)
+summary(close_tribes)
+summary(close_but)
+
+centralization(dat = larg_health_ntwk, FUN = sna::closeness, mode = "graph")
+centralization(dat = larg_tribes_pos_ntwk, FUN = sna::closeness, mode = "graph")
+centralization(dat = larg_but_ntwk, FUN = sna::closeness, mode = "graph")
+```
+
+\newpage
+
+### c. 
+```{r}
+between_health <- sna::betweenness(larg_health_ntwk, gmode = "graph")
+between_tribes <- sna::betweenness(larg_tribes_pos_ntwk, gmode = "graph")
+between_but <- sna::betweenness(larg_but_ntwk, gmode = "graph")
+
+barplot(between_health)
+barplot(between_tribes)
+barplot(between_but)
+
+summary(between_health)
+summary(between_tribes)
+summary(between_but)
+
+centralization(dat = larg_health_ntwk, FUN = sna::betweenness, mode = "graph")
+centralization(dat = larg_tribes_pos_ntwk, FUN = sna::betweenness, mode = "graph")
+centralization(dat = larg_but_ntwk, FUN = sna::betweenness, mode = "graph")
+```
+
+\newpage
+
+### d. 
+```{r}
+degree_health <- sna::degree(larg_health_ntwk, gmode = "graph") %>% table()
+degree_tribes <- sna::degree(larg_tribes_pos_ntwk, gmode = "graph") %>% table()
+degree_but <- sna::degree(larg_but_ntwk, gmode = "graph") %>% table()
+
+barplot(degree_health)
+barplot(degree_tribes)
+barplot(degree_but)
+
+summary(degree_health)
+summary(degree_tribes)
+summary(degree_but)
+```
+
+\newpage
+
+```{r}
+health_summary <- data.frame(
+  Centrality = c("Degree", "Eigenvector", "Closeness", "Betweenness"),
+  Min = c(min(degree_health), min(evcent_health), min(close_health), min(between_health)),
+  Max = c(max(degree_health), max(evcent_health), max(close_health), max(between_health)),
+  Mean = c(mean(degree_health), mean(evcent_health), mean(close_health), mean(between_health)),
+  SD = c(sd(degree_health), sd(evcent_health), sd(close_health), sd(between_health))
+)
+
+tribes_summary <- data.frame(
+  Centrality = c("Degree", "Eigenvector", "Closeness", "Betweenness"),
+  Min = c(min(degree_tribes), min(evcent_tribes_large), min(close_tribes), min(between_tribes)),
+  Max = c(max(degree_tribes), max(evcent_tribes_large), max(close_tribes), max(between_tribes)),
+  Mean = c(mean(degree_tribes), mean(evcent_tribes_large), mean(close_tribes), mean(between_tribes)),
+  SD = c(sd(degree_tribes), sd(evcent_tribes_large), sd(close_tribes), sd(between_tribes))
+)
+
+but_summary <- data.frame(
+  Centrality = c("Degree", "Eigenvector", "Closeness", "Betweenness"),
+  Min = c(min(degree_but), min(evcent_but_larg), min(close_but), min(between_but)),
+  Max = c(max(degree_but), max(evcent_but_larg), max(close_but), max(between_but)),
+  Mean = c(mean(degree_but), mean(evcent_but_larg), mean(close_but), mean(between_but)),
+  SD = c(sd(degree_but), sd(evcent_but_larg), sd(close_but), sd(between_but))
+)
+
+health_summary
+tribes_summary
+but_summary
+```
+
+These measures capture different aspects of node importance and centrality, so while there may be correlations between them, they are not measuring the same thing. Eigenvector centrality might emphasize the influence of connected nodes, while closeness focuses on proximity, and betweenness highlights the node’s control over information flow.
+
+
+
+### e. 
+```{r}
+deg_cent_health <- centralization(larg_health_ntwk, FUN = sna::degree, mode = "graph")
+deg_cent_tribes <- centralization(larg_tribes_pos_ntwk, FUN = sna::degree, mode = "graph")
+deg_cent_but <- centralization(larg_but_ntwk, FUN = sna::degree, mode = "graph")
+
+close_cent_health <- centralization(larg_health_ntwk, FUN = sna::closeness, mode = "graph")
+close_cent_tribes <- centralization(larg_tribes_pos_ntwk, FUN = sna::closeness, mode = "graph")
+close_cent_but <- centralization(larg_but_ntwk, FUN = sna::closeness, mode = "graph")
+
+between_cent_health <- centralization(larg_health_ntwk, FUN = sna::betweenness, mode = "graph")
+between_cent_tribes <- centralization(larg_tribes_pos_ntwk, FUN = sna::betweenness, mode = "graph")
+between_cent_but <- centralization(larg_but_ntwk, FUN = sna::betweenness, mode = "graph")
+
+evcent_cent_health <- centralization(larg_health_ntwk, FUN = sna::evcent, mode = "graph")
+evcent_cent_tribes <- centralization(larg_tribes_pos_ntwk, FUN = sna::evcent, mode = "graph")
+evcent_cent_but <- centralization(larg_but_ntwk, FUN = sna::evcent, mode = "graph")
+
+centralization_summary <- data.frame(
+  Network = c("ppi", "addhealth", "tribes"),
+  Degree = round(c(deg_cent_but, deg_cent_health, deg_cent_tribes),2),
+  Closeness = round(c(close_cent_but, close_cent_health, close_cent_tribes),2),
+  Betweenness = round(c(between_cent_but, between_cent_health, between_cent_tribes),2),
+  Eigenvector = round(c(evcent_cent_but, evcent_cent_health, evcent_cent_tribes),2)
+)
+
+centralization_summary
+```
+
+
+```{r echo = FALSE}
+health_igraph <- graph_from_adjacency_matrix(as.matrix(as.sociomatrix(larg_health_ntwk)))
+tribes_igraph <- graph_from_adjacency_matrix(as.matrix(as.sociomatrix(larg_tribes_pos_ntwk)))
+but_igraph <- graph_from_adjacency_matrix(as.matrix(as.sociomatrix(larg_but_ntwk)))
+
+vertex_health <- vertex_connectivity(health_igraph)
+vertex_tribes <- vertex_connectivity(tribes_igraph)
+vertex_but <- vertex_connectivity(but_igraph)
+
+edge_health <- edge_connectivity(health_igraph)
+edge_tribes <- edge_connectivity(tribes_igraph)
+edge_but <- edge_connectivity(but_igraph)
+
+vertex_cut_health <- min_cut(health_igraph, value.only = FALSE)$partition1
+vertex_cut_tribes <- min_cut(tribes_igraph, value.only = FALSE)$partition1
+vertex_cut_but <- min_cut(but_igraph, value.only = FALSE)$partition1
+
+edge_cut_health <- min_cut(health_igraph, value.only = FALSE)$cut
+edge_cut_tribes <- min_cut(tribes_igraph, value.only = FALSE)$cut
+edge_cut_but <- min_cut(but_igraph, value.only = FALSE)$cut
+```
+
+
+
+```{r echo = FALSE}
+network_summary <- data.frame(
+  Network = c("Health", "Tribes", "Butland"),
+  Vertex_Connectivity = c(vertex_connectivity(as.undirected(health_igraph)),
+                          vertex_connectivity(as.undirected(tribes_igraph)),
+                          vertex_connectivity(as.undirected(but_igraph))),
+  
+  Edge_Connectivity = c(edge_connectivity(as.undirected(health_igraph)),
+                        edge_connectivity(as.undirected(tribes_igraph)),
+                        edge_connectivity(as.undirected(but_igraph))),
+  
+  Vertex_Cut = c(paste(min_separators(as.undirected(health_igraph))),
+                 paste(min_separators(as.undirected(tribes_igraph))),
+                 paste(min_separators(as.undirected(but_igraph)))),
+  
+  Edge_Cut = c(min_cut(as.undirected(health_igraph)),
+               min_cut(as.undirected(tribes_igraph)),
+               min_cut(as.undirected(but_igraph)))
+)
+
+```
+
+```{r echo = FALSE}
+ver_heal <- vertex_connectivity(as.undirected(health_igraph))
+ver_trib <- vertex_connectivity(as.undirected(tribes_igraph))
+ver_but <- vertex_connectivity(as.undirected(but_igraph))
+  
+edge_heal <- edge_connectivity(as.undirected(health_igraph))
+edge_trib <- edge_connectivity(as.undirected(tribes_igraph))
+edge_but <- edge_connectivity(as.undirected(but_igraph))
+
+min_ver_heal <- min_separators(as.undirected(health_igraph))
+min_ver_trib <- min_separators(as.undirected(tribes_igraph))
+min_ver_but <- min_separators(as.undirected(but_igraph))
+  
+min_edge_heal <- min_cut(as.undirected(health_igraph), value.only = FALSE)$cut
+min_edge_trib <- min_cut(as.undirected(tribes_igraph), value.only = FALSE)$cut
+min_edge_but <- min_cut(as.undirected(but_igraph), value.only = FALSE)$cut
+
+
+
+
+```
+
+```{r echo=FALSE}
+#"Health Network - Vertex Connectivity:", `r ver_heal`
+
+#"Health Network - Edge Connectivity:", `r edge_heal`
+
+#"Health Network - Vertex Cut:", `r min_ver_heal`
+
+# "Health Network - Edge Cut:", `r min_edge_heal`
+
+#"Tribes Network - Vertex Connectivity:", `r ver_trib`
+
+#"Tribes Network - Edge Connectivity:", `r edge_trib`
+
+#"Tribes Network - Vertex Cut:", `r min_ver_trib`
+
+#"Tribes Network - Edge Cut:", `r min_edge_trib`
+
+#"Butland Network - Vertex Connectivity:", `r ver_but`
+
+#"Butland Network - Edge Connectivity:", `r edge_but`
+
+#"Butland Network - Vertex Cut:", `r min_ver_but`
+
+#"Butland Network - Edge Cut:", `r min_edge_but`
+```
+
+
+
+
+\newpage
+
+## Question 2
+### a. 
+```{r}
+flom_ntwk <- network(flomarriage, directed = FALSE)
+larg_flom <- component.dist(flom_ntwk)$membership == which.max(component.dist(flom_ntwk)$csize)
+
+larg_flom_ntwk <- network(flom_ntwk[larg_flom, larg_flom], directed = FALSE)
+flom_igraph <- graph_from_adjacency_matrix(as.matrix(as.sociomatrix(larg_flom_ntwk)))
+```
+
+
+```{r}
+ver_flom <- vertex_connectivity(as.undirected(flom_igraph))
+edge_flom <- edge_connectivity(as.undirected(flom_igraph))
+min_ver_flom <- min_separators(as.undirected(flom_igraph))
+min_edge_flom <- min_cut(as.undirected(flom_igraph), value.only = FALSE)$cut
+
+ver_flom
+edge_flom
+min_ver_flom
+min_edge_flom
+```
+
+```{r echo=FALSE}
+#"Flomarriage Network - Vertex Connectivity:", `r ver_flom`
+
+#"Flomarriage Network - Edge Connectivity:", `r edge_flom`
+
+#Flomarriage Network - Vertex Cut:", `r min_ver_flom`
+
+#"Flomarriage Network - Edge Cut:", `r min_edge_flom`
+
+```
+
+
+
+
+
+\newpage
+
+## Question 3
+### a. 
+```{r}
+ccsb <- read.table("CCSB-Y2H.txt")
+ccsb <- network(ccsb[, 1:2], directed = TRUE, loops = TRUE)
+ccsb[cbind(1:network.size(ccsb), 1:network.size(ccsb))] <- 0
+ccsb
+plot(ccsb)
+```
+
+\newpage
+
+### b. 
+```{r}
+out_degrees <- sna::degree(ccsb, cmode = "outdegree")
+in_degrees <- sna::degree(ccsb, cmode = "indegree")
+total_degrees <- sna::degree(ccsb)
+```
+
+```{r warning=FALSE}
+zipf <- adpmle(total_degrees)
+# summary(zipf)
+yule <- ayulemle(total_degrees)
+# summary(yule)
+waring <- awarmle(total_degrees)
+# summary(waring)
+possion <- apoimle(total_degrees)
+# summary(possion)
+cmp <- acmpmle(total_degrees)
+# summary(cmp)
+```
+
+
+
+### c. 
+```{r}
+aic_zipf <- lldpall(zipf$theta, total_degrees)
+aic_yule <- llyuleall(yule$theta, total_degrees)
+aic_waring <- llwarall(waring$theta, total_degrees)
+aic_poisson <- llpoiall(possion$theta, total_degrees)
+aic_cmp <- llcmpall(cmp$theta, total_degrees)
+```
+
+
+```{r}
+data.frame(zipf = aic_zipf,
+           yule = aic_yule,
+           waring = aic_waring,
+           possion = aic_poisson,
+           cmp = aic_cmp)
+```
+
+The CMP model fits the data best according to all the measures we looked at, followed by the Waring, Yule, and Zipf models. The Poisson model does a very poor job and doesn't fit the data well at all. The CMP model works well because it can handle some of the complexity in the data that the other models can't, which is why it comes out on top. The other models still do a decent job, but the CMP model is the best choice based on the results.
+
+
+
+\newpage
+
+## Question 4
+### a. 
+```{r}
+ccsb <- read.table("CCSB-Y2H.txt")
+undirected_ccsb_network <- network(ccsb[, 1:2], directed = FALSE, loops = TRUE)
+undirected_ccsb_network[cbind(1:network.size(undirected_ccsb_network), 1:network.size(undirected_ccsb_network))] <- 0
+ccsb_comp <- component.dist(undirected_ccsb_network)
+comp_size <- ccsb_comp$csize
+largest_size <- max(comp_size)
+
+largest_size
+length(comp_size)
+```
+
+The largest component of the network contains 964 nodes.
+
+Yes, the network likely has a giant component, as the largest component includes 964 out of 1278 nodes.
+
+
+### b. 
+```{r}
+larg_ccsb <- component.dist(undirected_ccsb_network)$membership == which.max(component.dist(undirected_ccsb_network)$csize)
+larg_ccsb_ntwk <- network(undirected_ccsb_network[larg_ccsb, larg_ccsb], directed = FALSE)
+plot(larg_ccsb_ntwk)
+```
+
+\newpage
+
+
+### c. 
+```{r}
+geodesic_distances <- geodist(undirected_ccsb_network, inf.replace = NA)$gdist
+summary(c(geodesic_distances) %>% na.omit())
+```
+
+
+```{r}
+N = 1278
+L = 964
+
+proportion_reachable = ((L * (L - 1)) / 2) / ((N * (N - 1)) / 2)
+proportion_reachable
+```
+
+
+```{r}
+mean_geodesic_distance <- mean(geodesic_distances, na.rm = TRUE)
+mean_geodesic_distance
+```
+
+
+```{r}
+node_degrees <- sna::degree(undirected_ccsb_network)
+num_isolates <- sum(node_degrees == 0)
+num_isolates
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,175 @@
+---
+title: "Stats218_HW1"
+author: "Zihan Lin"
+date: "2024-10-04"
+output: pdf_document
+---
+
+
+```{r warning=FALSE, message=FALSE}
+library(networkdata)
+library(sna)
+library(network)
+library(tidyverse)
+```
+
+
+## Question 1
+
+```{r warning=FALSE, message=FALSE}
+data(butland_ppi)
+data(addhealth9)
+data(tribes)
+```
+
+
+### a)
+```{r}
+only_boy <- which(addhealth9$X[,"female"] == 0)
+boys_match <- addhealth9$E[addhealth9$E[,1] %in% only_boy & addhealth9$E[,2] %in% only_boy,]
+health_ntwk <- network(boys_match, directed = FALSE)
+print(health_ntwk)
+```
+
+
+\newpage
+
+```{r}
+pos_tribe <- tribes[,,"pos"]
+tribe_ntwk <- network(pos_tribe, directed = FALSE)
+print(tribe_ntwk)
+
+bl_ntwk <- network(butland_ppi, directed = FALSE)
+print(bl_ntwk)
+```
+
+\newpage
+
+### b)
+```{r}
+plot(health_ntwk)
+plot(tribe_ntwk)
+plot(bl_ntwk)
+```
+
+\newpage
+### c)
+```{r}
+health_degree <- degree(health_ntwk, gmode = "graph") %>% table()
+tribe_degree <- degree(tribe_ntwk, gmode = "graph") %>% table()
+bl_degree <- degree(bl_ntwk, gmode = "graph") %>% table()
+health_degree
+tribe_degree
+bl_degree
+```
+
+\newpage
+### d)
+```{r}
+# summary
+summary(health_degree)
+summary(tribe_degree)
+summary(bl_degree)
+```
+
+```{r}
+# barplot
+barplot(health_degree, main = "Health Network Degree Distribution",
+        xlab = "Degree", ylab = "Frequency", col = "pink")
+```
+
+\newpage
+
+```{r}
+barplot(tribe_degree, main = "Tribe Network Degree Distribution",
+        xlab = "Degree", ylab = "Frequency", col = "green")
+
+barplot(bl_degree, main = "Butland PPI Network Degree Distribution",
+        xlab = "Degree", ylab = "Frequency", col = "yellow")
+```
+
+\newpage
+## Question 2
+```{r}
+data(florentine)
+```
+
+### a)
+```{r}
+network(flomarriage) %>% 
+  plot(displaylabels = TRUE, 
+       label = network.vertex.names(flomarriage), 
+       label.cex = 0.8)
+```
+
+### b)
+```{r}
+fm_degree <- degree(network(flomarriage), gmode = "graph")
+
+cat("Familiy has the lowest degree: ", 
+    network.vertex.names(flomarriage)[fm_degree == min(fm_degree)], 
+    ". Its degree is ", min(fm_degree), ". \n")
+cat("Familiy has the highest degree: ", 
+    network.vertex.names(flomarriage)[fm_degree == max(fm_degree)], 
+    ". Its degree is ", max(fm_degree), ". \n")
+```
+
+\newpage
+### c)
+```{r}
+fm_degree
+```
+
+### d)
+```{r}
+largest_fm <- which.max(component.dist(network(flomarriage))$csize)
+largest_component <- component.dist(network(flomarriage))$membership == largest_fm
+excluded <- network.vertex.names(flomarriage)[!largest_component]
+cat("Family excluded from the largest component in the Florentine Marriage Network: ", excluded)
+```
+
+\newpage
+## Question 3
+### a)
+```{r}
+ccsb <- read.table("CCSB-Y2H.txt")
+ccsb <- ccsb[ccsb[, 1] != ccsb[, 2], ]
+ccsb_network <- network(ccsb[, 1:2], directed = TRUE)
+plot(ccsb_network)
+```
+
+\newpage
+### b)
+```{r}
+out_degrees <- degree(ccsb_network, cmode = "outdegree")
+in_degrees <- degree(ccsb_network, cmode = "indegree")
+
+cat("Correlation between in-degree and out-degree:", cor(out_degrees, in_degrees), "\n")
+
+cat("Summary of total degrees:\n")
+summary(out_degrees + in_degrees)
+
+barplot(table(out_degrees + in_degrees), main = "Protein Activity Network Degree Distribution",
+        xlab = "Degree", ylab = "Frequency", col = "yellow")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
