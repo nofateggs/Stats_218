@@ -3,3 +3,4 @@ network
 networkdata
 ergm
 sna
+ergm.tapered

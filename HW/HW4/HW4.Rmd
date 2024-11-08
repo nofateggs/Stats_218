@@ -8,8 +8,9 @@ output: pdf_document
 ```{r warning=FALSE, message=FALSE}
 library(networkdata)
 library(network)
-library(ergm)
 library(sna)
+library(ergm)
+library(ergm.tapered)
 data(ffef)
 data(hansell)
 data(butland_ppi)
@@ -54,7 +55,7 @@ legend("topright", pch = 16, cex = 0.8,
 Fit a model to the network that includes terms for the homophily on ENA attendance, prestige and party affiliation. Include terms for geometrically weighted edgewise shared partners with the scale parameter fixed at 0.5 (i.e., gwesp(0.5,fixed=T)). Include a similar term for geometrically weighted dyadwise shared partners with the scale parameter fixed at 0.5 (i.e., gwdsp(0.5,fixed=T)).
 Hint: Use ergm.tapered() as it better deals with strong dependence between terms.
 ```{r warning=FALSE, message=FALSE, catch = TRUE}
-ffef_fit <- ergm(ffef ~ edges + 
+ffef_fit <- ergm.tapered(ffef ~ edges + 
                         nodematch("ena") + 
                         nodematch("prestige") + 
                         nodematch("party") +
@@ -100,7 +101,7 @@ The MCMC diagnostics show that the model has mostly converged well. The trace pl
 Extend the model to include other covariates in the network and other terms that you think are interesting in explaining the social structure. Feel free to consult the reference paper for ideas. Overall, what are the important features of the social structure of this network?
 
 ```{r catch = TRUE, message=FALSE, warning=FALSE}
-fit_extended <- ergm(ffef ~ edges + 
+fit_extended <- ergm.tapered(ffef ~ edges + 
                             nodematch("ena") + 
                             nodematch("prestige") + 
                             nodematch("party") +
@@ -159,8 +160,7 @@ We can measure the statistical degree of balance in a network by including the t
 Fit the model with transitive and cyclic triads as well as foundational statistics for the overall density, the mutuality of ties and the homophily on sex using the ergm.tapered command:
 
 ```{r cache = TRUE, warning=FALSE, message=FALSE}
-fit <- ergm(hansell ~ edges + mutual + nodematch("sex", diff = TRUE) +
-                    ttriad + ctriad, estimate = "MPLE")
+fit <- ergm.tapered(hansell ~ edges + mutual + nodematch("sex", diff = TRUE) + ttriad + ctriad)
 summary(fit)
 ```
 
@@ -171,7 +171,7 @@ summary(fit)
 - Edges (`r fit$coef[1]`): This value shows the basic likelihood of two students in the network being friends. Since it’s a large negative number, it suggests that friendships are generally uncommon unless there are specific reasons for students to connect.
 
 - Mutual (`r fit$coef[2]`): This positive value indicates a tendency for friendships to be mutual, meaning if one student considers another a friend, the feeling is likely to be returned. However, the effect is not statistically significant, suggesting that there isn’t a strong or consistent preference for friendships to be mutual in this network.
-
+11111111111111111111111
 - Same-Sex Friendship (Female: `r fit$coef[3]`, Male: `r fit$coef[4]`): These positive values show that students are much more likely to form friendships with others of the same sex. Both coefficients are statistically significant, indicating a strong preference for same-sex friendships. Boys are slightly more likely to prefer same-sex friendships than girls in this classroom network.
 
 \newpage
@@ -199,6 +199,7 @@ summary(fit)
 
 - The model shows a positive and statistically significant coefficient for transitive triads (ttriad: `r fit$coef[5]`), which suggests a preference for balanced relationships. Additionally, the negative coefficient for cyclic triads (ctriad: `r fit$coef[6]`) indicates that students avoid cyclic, unbalanced relationships. Together, these coefficients imply a general preference for balanced friendship ties in this classroom network, as students tend to form stable, triangular friendships rather than unbalanced loops.
 
+\newpage
 
 ## Question 3
 
@@ -212,36 +213,70 @@ but_net
 
 
 Fit various tapered ERGM models to the network using ergm.tapered. Consider terms doc- umented under ergm-terms. Good candidates include istar, ostar, gwodegree, gwidegree, dgwest, dgwdsp, ctriple, ttriple.
+```{r cache=TRUE, warning=FALSE, message=FALSE}
+fit1 <- ergm.tapered(but_net ~ edges + istar(2) + ostar(2) + gwodegree(0.5, fixed = TRUE) + gwidegree(0.5, fixed = TRUE))
+
+fit2 <- ergm.tapered(but_net ~ edges + ctriple + ttriple + dgwdsp(0.5, fixed = TRUE))
+
+fit3 <- ergm.tapered(but_net ~ edges + istar(2) + ostar(2) + ctriple + ttriple + gwodegree(0.5, fixed = TRUE) + gwidegree(0.5, fixed = TRUE))
+
+summary(fit1)
+summary(fit2)
+summary(fit3)
+```
+
+\newpage
+
+
+Check the MCMC diagnostics with mcmc.diagnostics.
 ```{r}
-#fit1 <- ergm(
-  #but_net ~ edges + istar(2) + ostar(2) + gwodegree(0.5, fixed = TRUE) + gwidegree(0.5, fixed = TRUE)
-#)
+mcmc.diagnostics(fit1)
+```
 
-#fit2 <- ergm(
-  #but_net ~ edges + ctriple + ttriple + dgwest(0.5, fixed = TRUE) + dgwdsp(0.5, fixed = TRUE)
-#)
+\newpage
 
-#fit3 <- ergm(
-  #but_net ~ edges + istar(2) + ostar(2) + ctriple + ttriple + gwodegree(0.5, fixed = TRUE) + gwidegree(0.5, fixed = TRUE)
-#)
-
-#summary(fit1)
-#summary(fit2)
-#summary(fit3)
+```{r}
+par(mar = c(4, 4, 2, 2))
+mcmc.diagnostics(fit2)
 ```
 
 
+\newpage
+
+```{r}
+par(mar = c(4, 4, 2, 2))
+mcmc.diagnostics(fit3)
+```
+
+\newpage
+
+Overall, how does the goodness-of-fit look?
 
 
+```{r cache=TRUE}
+gof1 <- gof(fit1, GOF = ~idegree + odegree + esp, control = control.gof.ergm(nsim = 200))
+plot(gof1)
+```
 
+The goodness-of-fit results show that the model fits the observed network well. The in-degree and out-degree distributions, as well as the edgewise shared partners, match closely with the simulated values, especially at lower levels. While there are a few small differences at certain points, the model does a good job of capturing the main structure of the network. This suggests that the model accurately represents how the network is organized.
 
+\newpage
 
+```{r cache=TRUE}
+gof2 <- gof(fit2, GOF = ~idegree + odegree + esp, control = control.gof.ergm(nsim = 200))
+plot(gof2)
+```
 
+Overall, the model provides a good fit for the network, capturing the key structural properties such as in-degree, out-degree, and clustering. Minor deviations at specific points do not significantly impact the model's representation of the network structure. Therefore, this model appears to be a suitable representation of the observed network data.
 
+\newpage
 
+```{r cache=TRUE}
+gof3 <- gof(fit3, GOF = ~idegree + odegree + esp, control = control.gof.ergm(nsim = 200))
+plot(gof3)
+```
 
-
-
+Overall, the goodness-of-fit diagnostics indicate that the model provides a reasonable fit to the observed network, successfully capturing key structural properties such as degree distributions and clustering. Minor deviations at specific points do not significantly affect the overall model quality, making it a reliable representation of the network’s structure.
 
 
 
